@@ -48,6 +48,50 @@ describe('calculateFridayClockOut', () => {
     expect(plan.earliestClockOut).toBe(t('19:00'));
   });
 
+  it('does not double-count duplicate weekday plans', () => {
+    const plan = calculateFridayClockOut({
+      todayWeekday: 2,
+      weeklyRemainingMinutes: 32 * 60 + 24,
+      todayClockIn: t('09:54'),
+      fridayClockIn: t('09:55'),
+      plannedWorkdaysBeforeFriday: [
+        { weekday: 2, clockIn: t('09:54'), clockOut: t('17:54') },
+        { weekday: 2, clockIn: t('09:00'), clockOut: t('18:00') },
+        { weekday: 3, clockIn: t('09:00'), clockOut: t('18:00') },
+        { weekday: 4, clockIn: t('09:00'), clockOut: t('18:00') },
+      ],
+      breaks: [lunch],
+      rules: defaultWorkRules,
+    });
+
+    expect(plan.plannedDayCount).toBe(3);
+    expect(plan.plannedBeforeFridayMinutes).toBe(23 * 60);
+    expect(plan.targetRequiredMinutes).toBe(9 * 60 + 24);
+    expect(plan.earliestClockOut).toBe(t('20:19'));
+  });
+
+  it('keeps Friday core time and reports excess when plans finish the remaining work early', () => {
+    const plan = calculateFridayClockOut({
+      todayWeekday: 2,
+      weeklyRemainingMinutes: 20 * 60,
+      todayClockIn: t('09:00'),
+      fridayClockIn: t('09:00'),
+      plannedWorkdaysBeforeFriday: [
+        { weekday: 2, clockIn: t('09:00'), clockOut: t('18:00') },
+        { weekday: 3, clockIn: t('09:00'), clockOut: t('18:00') },
+        { weekday: 4, clockIn: t('09:00'), clockOut: t('18:00') },
+      ],
+      breaks: [lunch],
+      rules: defaultWorkRules,
+    });
+
+    expect(plan.plannedBeforeFridayMinutes).toBe(24 * 60);
+    expect(plan.targetRequiredMinutes).toBe(0);
+    expect(plan.excessBeforeFridayMinutes).toBe(4 * 60);
+    expect(plan.earliestClockOut).toBe(t('16:00'));
+  });
+
+
   it('keeps same-day calculation on Friday', () => {
     const plan = calculateFridayClockOut({
       todayWeekday: 5,

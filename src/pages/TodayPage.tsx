@@ -64,7 +64,7 @@ export function TodayPage({ rules }: { rules: WorkRules }) {
       const fridayClockIn = parseTime(form.fridayClockIn);
       const weeklyRemaining = parseDuration(form.weeklyRemaining);
       const breaks = [...(form.useDefaultBreak ? [rules.defaultBreak] : []), ...form.customBreaks];
-      const plannedWorkdaysBeforeFriday = [{ weekday: todayWeekday, clockIn, clockOut: todayClockOut }, ...Object.entries(form.remainingDayPlans).map(([weekday, plan]) => ({ weekday: Number(weekday), clockIn: parseTime(plan.clockIn), clockOut: parseTime(plan.clockOut) }))];
+      const plannedWorkdaysBeforeFriday = [{ weekday: todayWeekday, clockIn, clockOut: todayClockOut }, ...Object.entries(form.remainingDayPlans).filter(([weekday]) => planningWeekdays.includes(Number(weekday))).map(([weekday, plan]) => ({ weekday: Number(weekday), clockIn: parseTime(plan.clockIn), clockOut: parseTime(plan.clockOut) }))];
       const plan = calculateFridayClockOut({ todayWeekday, weeklyRemainingMinutes: weeklyRemaining, todayClockIn: clockIn, fridayClockIn, plannedWorkdaysBeforeFriday, breaks, rules });
       const effectiveNow = Math.max(clockIn, currentTime);
       const recognizedSoFar = calculateRecognizedWork({ clockIn, clockOut: effectiveNow, breaks });
@@ -76,13 +76,14 @@ export function TodayPage({ rules }: { rules: WorkRules }) {
         targetRequiredMinutes: plan.targetRequiredMinutes,
         plannedDayCount: plan.plannedDayCount,
         plannedBeforeFridayMinutes: plan.plannedBeforeFridayMinutes,
+        excessBeforeFridayMinutes: plan.excessBeforeFridayMinutes,
         core: plan.earliestClockOut == null ? { isValid: false, reason: '퇴근 가능 시간을 계산하지 못했어요.' } : validateCoreTime({ clockIn: plan.mode === 'friday' ? fridayClockIn : clockIn, clockOut: plan.earliestClockOut, coreTime: rules.coreTime }),
         isImpossible: plan.earliestClockOut == null,
       };
     } catch {
-      return { targetLabel: '금요일 예상', earliestClockOut: null, recognizedSoFar: 0, realtimeRemaining: 0, targetRequiredMinutes: 0, plannedDayCount: 0, plannedBeforeFridayMinutes: 0, core: { isValid: false, reason: '입력값을 확인해주세요.' }, isImpossible: true };
+      return { targetLabel: '금요일 예상', earliestClockOut: null, recognizedSoFar: 0, realtimeRemaining: 0, targetRequiredMinutes: 0, plannedDayCount: 0, plannedBeforeFridayMinutes: 0, excessBeforeFridayMinutes: 0, core: { isValid: false, reason: '입력값을 확인해주세요.' }, isImpossible: true };
     }
-  }, [form, rules, todayWeekday]);
+  }, [form, planningWeekdays, rules, todayWeekday]);
 
   return <div className="grid gap-5 lg:grid-cols-[1fr_1.05fr]"><TodayResultCard {...result} /><Card><div className="mb-5"><h2 className="text-xl font-black">금요일 퇴근 계산</h2><p className="mt-1 text-sm text-slate-500">Flex 상 주간 잔여시간을 입력하면 오늘 퇴근 계획과 내일부터 목요일까지의 근무 계획을 반영해 금요일 예상 퇴근 시간을 알려드려요.</p></div><TodayCalculatorForm value={form} onChange={setForm} planningWeekdays={planningWeekdays} getDefaultTodayClockOut={getDefaultTodayClockOut} /></Card><Card className="lg:col-span-2"><h2 className="text-lg font-black">기본 규칙</h2><p className="mt-2 text-sm text-slate-500">근무 가능 시간 {formatTime(rules.workWindow.start)}-{formatTime(rules.workWindow.end)}, 코어타임 {formatTime(rules.coreTime.start)}-{formatTime(rules.coreTime.end)}, 기본 휴게 {formatTime(rules.defaultBreak.start)}-{formatTime(rules.defaultBreak.end)} 기준으로 계산합니다. 월~목 계산은 오늘 퇴근 계획과 화면의 금요일 전 근무 계획을 기준으로 합니다.</p>{rules === defaultWorkRules && null}</Card></div>;
 }

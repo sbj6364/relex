@@ -16,6 +16,7 @@ export type FridayClockOutPlan = {
   targetRequiredMinutes: number;
   plannedDayCount: number;
   plannedBeforeFridayMinutes: number;
+  excessBeforeFridayMinutes: number;
   earliestClockOut: Minutes | null;
 };
 
@@ -37,12 +38,17 @@ export function calculateFridayClockOut(params: {
       minClockOut: params.rules.coreTime.end,
       maxClockOut: params.rules.workWindow.end,
     });
-    return { mode, targetWeekday: params.todayWeekday, targetRequiredMinutes: params.weeklyRemainingMinutes, plannedDayCount: 0, plannedBeforeFridayMinutes: 0, earliestClockOut };
+    return { mode, targetWeekday: params.todayWeekday, targetRequiredMinutes: params.weeklyRemainingMinutes, plannedDayCount: 0, plannedBeforeFridayMinutes: 0, excessBeforeFridayMinutes: 0, earliestClockOut };
   }
 
-  const relevantPlannedWorkdays = params.plannedWorkdaysBeforeFriday.filter((day) => day.weekday >= params.todayWeekday && day.weekday < friday);
+  const uniquePlannedWorkdays = new Map<number, PlannedWorkday>();
+  for (const day of params.plannedWorkdaysBeforeFriday) {
+    if (!uniquePlannedWorkdays.has(day.weekday)) uniquePlannedWorkdays.set(day.weekday, day);
+  }
+  const relevantPlannedWorkdays = [...uniquePlannedWorkdays.values()].filter((day) => day.weekday >= params.todayWeekday && day.weekday < friday);
   const plannedBeforeFridayMinutes = relevantPlannedWorkdays.reduce((total, day) => total + calculateRecognizedWork({ clockIn: day.clockIn, clockOut: day.clockOut, breaks: params.breaks }), 0);
   const targetRequiredMinutes = Math.max(0, params.weeklyRemainingMinutes - plannedBeforeFridayMinutes);
+  const excessBeforeFridayMinutes = Math.max(0, plannedBeforeFridayMinutes - params.weeklyRemainingMinutes);
   const earliestClockOut = findEarliestClockOut({
     clockIn: params.fridayClockIn,
     requiredWorkMinutes: targetRequiredMinutes,
@@ -51,5 +57,5 @@ export function calculateFridayClockOut(params: {
     maxClockOut: params.rules.workWindow.end,
   });
 
-  return { mode, targetWeekday: friday, targetRequiredMinutes, plannedDayCount: relevantPlannedWorkdays.length, plannedBeforeFridayMinutes, earliestClockOut };
+  return { mode, targetWeekday: friday, targetRequiredMinutes, plannedDayCount: relevantPlannedWorkdays.length, plannedBeforeFridayMinutes, excessBeforeFridayMinutes, earliestClockOut };
 }
