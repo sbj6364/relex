@@ -3,13 +3,19 @@ import { calculateRecognizedWork } from './calculateRecognizedWork';
 import { findEarliestClockOut } from './findEarliestClockOut';
 
 const friday = 5;
-const minutesPerStandardDay = 8 * 60;
+
+export type PlannedWorkday = {
+  weekday: number;
+  clockIn: Minutes;
+  clockOut: Minutes;
+};
 
 export type FridayClockOutPlan = {
   mode: 'today' | 'friday';
   targetWeekday: number;
   targetRequiredMinutes: number;
-  assumedStandardDays: number;
+  plannedDayCount: number;
+  plannedBeforeFridayMinutes: number;
   earliestClockOut: Minutes | null;
 };
 
@@ -17,8 +23,8 @@ export function calculateFridayClockOut(params: {
   todayWeekday: number;
   weeklyRemainingMinutes: number;
   todayClockIn: Minutes;
-  todayCurrentTime: Minutes;
   fridayClockIn: Minutes;
+  plannedWorkdaysBeforeFriday: PlannedWorkday[];
   breaks: TimeRange[];
   rules: WorkRules;
 }): FridayClockOutPlan {
@@ -31,12 +37,12 @@ export function calculateFridayClockOut(params: {
       minClockOut: params.rules.coreTime.end,
       maxClockOut: params.rules.workWindow.end,
     });
-    return { mode, targetWeekday: params.todayWeekday, targetRequiredMinutes: params.weeklyRemainingMinutes, assumedStandardDays: 0, earliestClockOut };
+    return { mode, targetWeekday: params.todayWeekday, targetRequiredMinutes: params.weeklyRemainingMinutes, plannedDayCount: 0, plannedBeforeFridayMinutes: 0, earliestClockOut };
   }
 
-  const futureStandardDaysUntilThursday = Math.max(0, friday - params.todayWeekday - 1);
-  const assumedStandardDays = 1 + futureStandardDaysUntilThursday;
-  const targetRequiredMinutes = Math.max(0, params.weeklyRemainingMinutes - assumedStandardDays * minutesPerStandardDay);
+  const relevantPlannedWorkdays = params.plannedWorkdaysBeforeFriday.filter((day) => day.weekday >= params.todayWeekday && day.weekday < friday);
+  const plannedBeforeFridayMinutes = relevantPlannedWorkdays.reduce((total, day) => total + calculateRecognizedWork({ clockIn: day.clockIn, clockOut: day.clockOut, breaks: params.breaks }), 0);
+  const targetRequiredMinutes = Math.max(0, params.weeklyRemainingMinutes - plannedBeforeFridayMinutes);
   const earliestClockOut = findEarliestClockOut({
     clockIn: params.fridayClockIn,
     requiredWorkMinutes: targetRequiredMinutes,
@@ -45,11 +51,5 @@ export function calculateFridayClockOut(params: {
     maxClockOut: params.rules.workWindow.end,
   });
 
-  return { mode, targetWeekday: friday, targetRequiredMinutes, assumedStandardDays, earliestClockOut };
-}
-
-export function calculateRealtimeRemaining(params: { weeklyRemainingMinutes: number; clockIn: Minutes; currentTime: Minutes; breaks: TimeRange[] }): number {
-  const effectiveNow = Math.max(params.clockIn, params.currentTime);
-  const recognizedSoFar = calculateRecognizedWork({ clockIn: params.clockIn, clockOut: effectiveNow, breaks: params.breaks });
-  return params.weeklyRemainingMinutes - recognizedSoFar;
+  return { mode, targetWeekday: friday, targetRequiredMinutes, plannedDayCount: relevantPlannedWorkdays.length, plannedBeforeFridayMinutes, earliestClockOut };
 }
