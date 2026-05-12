@@ -1,15 +1,8 @@
-import type { Minutes, TimeRange, WorkRules } from '../../types/work';
-import { findEarliestClockOut } from './findEarliestClockOut';
+import type { Minutes, WorkRules } from '../../types/work';
 
 const standardWorkMinutes = 8 * 60;
 
-export function calculateDefaultClockOut(params: { clockIn: Minutes; breaks: TimeRange[]; rules: WorkRules; targetWorkMinutes?: number }): Minutes {
+export function calculateDefaultClockOut(params: { clockIn: Minutes; breakMinutes: number; rules: WorkRules; targetWorkMinutes?: number }): Minutes {
   const targetWorkMinutes = params.targetWorkMinutes ?? standardWorkMinutes;
-  return findEarliestClockOut({
-    clockIn: params.clockIn,
-    requiredWorkMinutes: targetWorkMinutes,
-    breaks: params.breaks,
-    minClockOut: params.clockIn,
-    maxClockOut: params.rules.workWindow.end,
-  }) ?? params.clockIn + targetWorkMinutes;
+  return Math.min(params.rules.workWindow.end, params.clockIn + targetWorkMinutes + Math.max(0, params.breakMinutes));
 }

@@ -1,6 +1,4 @@
-import type { Minutes, TimeRange, WorkRules } from '../../types/work';
-import { calculateRecognizedWork } from './calculateRecognizedWork';
-import { findEarliestClockOut } from './findEarliestClockOut';
+import type { Minutes, WorkRules } from '../../types/work';
 
 const friday = 5;
 
@@ -8,6 +6,7 @@ export type PlannedWorkday = {
   weekday: number;
   clockIn: Minutes;
   clockOut: Minutes;
+  breakMinutes: number;
 };
 
 export type FridayClockOutPlan = {
@@ -22,25 +21,35 @@ export type FridayClockOutPlan = {
   earliestClockOut: Minutes | null;
 };
 
+export function getRecognizedMinutesWithBreak(params: { clockIn: Minutes; clockOut: Minutes; breakMinutes: number }): number {
+  return Math.max(0, params.clockOut - params.clockIn - Math.max(0, params.breakMinutes));
+}
+
+function findEarliestClockOutWithBreak(params: { clockIn: Minutes; requiredWorkMinutes: number; breakMinutes: number; minClockOut: Minutes; maxClockOut: Minutes }): Minutes | null {
+  const clockOut = Math.max(params.clockIn, params.minClockOut, params.clockIn + params.requiredWorkMinutes + Math.max(0, params.breakMinutes));
+  return clockOut <= params.maxClockOut ? clockOut : null;
+}
+
 export function calculateFridayClockOut(params: {
   todayWeekday: number;
   weeklyRemainingMinutes: number;
   todayClockIn: Minutes;
+  todayBreakMinutes: number;
   fridayClockIn: Minutes;
+  fridayBreakMinutes: number;
   plannedWorkdaysBeforeFriday: PlannedWorkday[];
-  breaks: TimeRange[];
   rules: WorkRules;
 }): FridayClockOutPlan {
   const mode = params.todayWeekday >= 1 && params.todayWeekday < friday ? 'friday' : 'today';
   if (mode === 'today') {
-    const earliestClockOut = findEarliestClockOut({
+    const earliestClockOut = findEarliestClockOutWithBreak({
       clockIn: params.todayClockIn,
       requiredWorkMinutes: params.weeklyRemainingMinutes,
-      breaks: params.breaks,
+      breakMinutes: params.todayBreakMinutes,
       minClockOut: params.rules.coreTime.end,
       maxClockOut: params.rules.workWindow.end,
     });
-    const projectedClockOutWorkMinutes = earliestClockOut == null ? 0 : calculateRecognizedWork({ clockIn: params.todayClockIn, clockOut: earliestClockOut, breaks: params.breaks });
+    const projectedClockOutWorkMinutes = earliestClockOut == null ? 0 : getRecognizedMinutesWithBreak({ clockIn: params.todayClockIn, clockOut: earliestClockOut, breakMinutes: params.todayBreakMinutes });
     const projectedExcessMinutes = Math.max(0, projectedClockOutWorkMinutes - params.weeklyRemainingMinutes);
     return { mode, targetWeekday: params.todayWeekday, targetRequiredMinutes: params.weeklyRemainingMinutes, plannedDayCount: 0, plannedBeforeFridayMinutes: 0, excessBeforeFridayMinutes: 0, projectedClockOutWorkMinutes, projectedExcessMinutes, earliestClockOut };
   }
@@ -50,18 +59,18 @@ export function calculateFridayClockOut(params: {
     if (!uniquePlannedWorkdays.has(day.weekday)) uniquePlannedWorkdays.set(day.weekday, day);
   }
   const relevantPlannedWorkdays = [...uniquePlannedWorkdays.values()].filter((day) => day.weekday >= params.todayWeekday && day.weekday < friday);
-  const plannedBeforeFridayMinutes = relevantPlannedWorkdays.reduce((total, day) => total + calculateRecognizedWork({ clockIn: day.clockIn, clockOut: day.clockOut, breaks: params.breaks }), 0);
+  const plannedBeforeFridayMinutes = relevantPlannedWorkdays.reduce((total, day) => total + getRecognizedMinutesWithBreak(day), 0);
   const targetRequiredMinutes = Math.max(0, params.weeklyRemainingMinutes - plannedBeforeFridayMinutes);
   const excessBeforeFridayMinutes = Math.max(0, plannedBeforeFridayMinutes - params.weeklyRemainingMinutes);
-  const earliestClockOut = findEarliestClockOut({
+  const earliestClockOut = findEarliestClockOutWithBreak({
     clockIn: params.fridayClockIn,
     requiredWorkMinutes: targetRequiredMinutes,
-    breaks: params.breaks,
+    breakMinutes: params.fridayBreakMinutes,
     minClockOut: params.rules.coreTime.end,
     maxClockOut: params.rules.workWindow.end,
   });
 
-  const projectedClockOutWorkMinutes = earliestClockOut == null ? 0 : calculateRecognizedWork({ clockIn: params.fridayClockIn, clockOut: earliestClockOut, breaks: params.breaks });
+  const projectedClockOutWorkMinutes = earliestClockOut == null ? 0 : getRecognizedMinutesWithBreak({ clockIn: params.fridayClockIn, clockOut: earliestClockOut, breakMinutes: params.fridayBreakMinutes });
   const projectedExcessMinutes = Math.max(0, excessBeforeFridayMinutes + projectedClockOutWorkMinutes - targetRequiredMinutes);
 
   return { mode, targetWeekday: friday, targetRequiredMinutes, plannedDayCount: relevantPlannedWorkdays.length, plannedBeforeFridayMinutes, excessBeforeFridayMinutes, projectedClockOutWorkMinutes, projectedExcessMinutes, earliestClockOut };

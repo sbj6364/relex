@@ -4,7 +4,8 @@ import { calculateFridayClockOut } from '../lib/work/calculateFridayClockOut';
 import { defaultWorkRules } from '../lib/work/workRules';
 
 const t = parseTime;
-const lunch = { start: t('12:00'), end: t('13:00') };
+const noBreak = 0;
+const lunch = 60;
 
 describe('calculateFridayClockOut', () => {
   it('uses editable plans from Tuesday through Thursday to estimate Friday clock-out', () => {
@@ -12,13 +13,14 @@ describe('calculateFridayClockOut', () => {
       todayWeekday: 2,
       weeklyRemainingMinutes: 32 * 60 + 24,
       todayClockIn: t('09:00'),
+      todayBreakMinutes: lunch,
       fridayClockIn: t('09:00'),
+      fridayBreakMinutes: lunch,
       plannedWorkdaysBeforeFriday: [
-        { weekday: 2, clockIn: t('09:00'), clockOut: t('18:00') },
-        { weekday: 3, clockIn: t('09:00'), clockOut: t('18:00') },
-        { weekday: 4, clockIn: t('09:00'), clockOut: t('18:00') },
+        { weekday: 2, clockIn: t('09:00'), clockOut: t('18:00'), breakMinutes: lunch },
+        { weekday: 3, clockIn: t('09:00'), clockOut: t('18:00'), breakMinutes: lunch },
+        { weekday: 4, clockIn: t('09:00'), clockOut: t('18:00'), breakMinutes: lunch },
       ],
-      breaks: [lunch],
       rules: defaultWorkRules,
     });
 
@@ -29,17 +31,39 @@ describe('calculateFridayClockOut', () => {
     expect(plan.earliestClockOut).toBe(t('18:24'));
   });
 
+  it('defaults to zero break minutes when plans say so', () => {
+    const plan = calculateFridayClockOut({
+      todayWeekday: 2,
+      weeklyRemainingMinutes: 32 * 60 + 24,
+      todayClockIn: t('09:00'),
+      todayBreakMinutes: noBreak,
+      fridayClockIn: t('09:00'),
+      fridayBreakMinutes: noBreak,
+      plannedWorkdaysBeforeFriday: [
+        { weekday: 2, clockIn: t('09:00'), clockOut: t('18:00'), breakMinutes: noBreak },
+        { weekday: 3, clockIn: t('09:00'), clockOut: t('18:00'), breakMinutes: noBreak },
+        { weekday: 4, clockIn: t('09:00'), clockOut: t('18:00'), breakMinutes: noBreak },
+      ],
+      rules: defaultWorkRules,
+    });
+
+    expect(plan.plannedBeforeFridayMinutes).toBe(27 * 60);
+    expect(plan.targetRequiredMinutes).toBe(5 * 60 + 24);
+    expect(plan.earliestClockOut).toBe(t('16:00'));
+  });
+
   it('reflects edited remaining day clock-out times', () => {
     const plan = calculateFridayClockOut({
       todayWeekday: 3,
       weeklyRemainingMinutes: 24 * 60,
       todayClockIn: t('09:00'),
+      todayBreakMinutes: lunch,
       fridayClockIn: t('09:00'),
+      fridayBreakMinutes: lunch,
       plannedWorkdaysBeforeFriday: [
-        { weekday: 3, clockIn: t('09:00'), clockOut: t('17:00') },
-        { weekday: 4, clockIn: t('09:00'), clockOut: t('18:00') },
+        { weekday: 3, clockIn: t('09:00'), clockOut: t('17:00'), breakMinutes: lunch },
+        { weekday: 4, clockIn: t('09:00'), clockOut: t('18:00'), breakMinutes: lunch },
       ],
-      breaks: [lunch],
       rules: defaultWorkRules,
     });
 
@@ -53,14 +77,15 @@ describe('calculateFridayClockOut', () => {
       todayWeekday: 2,
       weeklyRemainingMinutes: 32 * 60 + 24,
       todayClockIn: t('09:54'),
+      todayBreakMinutes: lunch,
       fridayClockIn: t('09:55'),
+      fridayBreakMinutes: lunch,
       plannedWorkdaysBeforeFriday: [
-        { weekday: 2, clockIn: t('09:54'), clockOut: t('17:54') },
-        { weekday: 2, clockIn: t('09:00'), clockOut: t('18:00') },
-        { weekday: 3, clockIn: t('09:00'), clockOut: t('18:00') },
-        { weekday: 4, clockIn: t('09:00'), clockOut: t('18:00') },
+        { weekday: 2, clockIn: t('09:54'), clockOut: t('17:54'), breakMinutes: lunch },
+        { weekday: 2, clockIn: t('09:00'), clockOut: t('18:00'), breakMinutes: lunch },
+        { weekday: 3, clockIn: t('09:00'), clockOut: t('18:00'), breakMinutes: lunch },
+        { weekday: 4, clockIn: t('09:00'), clockOut: t('18:00'), breakMinutes: lunch },
       ],
-      breaks: [lunch],
       rules: defaultWorkRules,
     });
 
@@ -75,13 +100,14 @@ describe('calculateFridayClockOut', () => {
       todayWeekday: 2,
       weeklyRemainingMinutes: 20 * 60,
       todayClockIn: t('09:00'),
+      todayBreakMinutes: lunch,
       fridayClockIn: t('09:00'),
+      fridayBreakMinutes: lunch,
       plannedWorkdaysBeforeFriday: [
-        { weekday: 2, clockIn: t('09:00'), clockOut: t('18:00') },
-        { weekday: 3, clockIn: t('09:00'), clockOut: t('18:00') },
-        { weekday: 4, clockIn: t('09:00'), clockOut: t('18:00') },
+        { weekday: 2, clockIn: t('09:00'), clockOut: t('18:00'), breakMinutes: lunch },
+        { weekday: 3, clockIn: t('09:00'), clockOut: t('18:00'), breakMinutes: lunch },
+        { weekday: 4, clockIn: t('09:00'), clockOut: t('18:00'), breakMinutes: lunch },
       ],
-      breaks: [lunch],
       rules: defaultWorkRules,
     });
 
@@ -92,19 +118,19 @@ describe('calculateFridayClockOut', () => {
     expect(plan.earliestClockOut).toBe(t('16:00'));
   });
 
-
   it('reports projected excess when Friday core time requires more work than Friday needs', () => {
     const plan = calculateFridayClockOut({
       todayWeekday: 2,
       weeklyRemainingMinutes: 32 * 60 + 24,
       todayClockIn: t('09:54'),
+      todayBreakMinutes: lunch,
       fridayClockIn: t('07:55'),
+      fridayBreakMinutes: lunch,
       plannedWorkdaysBeforeFriday: [
-        { weekday: 2, clockIn: t('09:54'), clockOut: t('18:54') },
-        { weekday: 3, clockIn: t('09:00'), clockOut: t('20:00') },
-        { weekday: 4, clockIn: t('09:00'), clockOut: t('20:00') },
+        { weekday: 2, clockIn: t('09:54'), clockOut: t('18:54'), breakMinutes: lunch },
+        { weekday: 3, clockIn: t('09:00'), clockOut: t('20:00'), breakMinutes: lunch },
+        { weekday: 4, clockIn: t('09:00'), clockOut: t('20:00'), breakMinutes: lunch },
       ],
-      breaks: [lunch],
       rules: defaultWorkRules,
     });
 
@@ -114,15 +140,15 @@ describe('calculateFridayClockOut', () => {
     expect(plan.projectedExcessMinutes).toBe(2 * 60 + 41);
   });
 
-
   it('keeps same-day calculation on Friday', () => {
     const plan = calculateFridayClockOut({
       todayWeekday: 5,
       weeklyRemainingMinutes: 8 * 60,
       todayClockIn: t('09:00'),
+      todayBreakMinutes: lunch,
       fridayClockIn: t('09:00'),
+      fridayBreakMinutes: lunch,
       plannedWorkdaysBeforeFriday: [],
-      breaks: [lunch],
       rules: defaultWorkRules,
     });
 
