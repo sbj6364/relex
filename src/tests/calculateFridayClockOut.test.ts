@@ -88,7 +88,30 @@ describe('calculateFridayClockOut', () => {
     expect(plan.plannedBeforeFridayMinutes).toBe(24 * 60);
     expect(plan.targetRequiredMinutes).toBe(0);
     expect(plan.excessBeforeFridayMinutes).toBe(4 * 60);
+    expect(plan.projectedExcessMinutes).toBe(10 * 60);
     expect(plan.earliestClockOut).toBe(t('16:00'));
+  });
+
+
+  it('reports projected excess when Friday core time requires more work than Friday needs', () => {
+    const plan = calculateFridayClockOut({
+      todayWeekday: 2,
+      weeklyRemainingMinutes: 32 * 60 + 24,
+      todayClockIn: t('09:54'),
+      fridayClockIn: t('07:55'),
+      plannedWorkdaysBeforeFriday: [
+        { weekday: 2, clockIn: t('09:54'), clockOut: t('18:54') },
+        { weekday: 3, clockIn: t('09:00'), clockOut: t('20:00') },
+        { weekday: 4, clockIn: t('09:00'), clockOut: t('20:00') },
+      ],
+      breaks: [lunch],
+      rules: defaultWorkRules,
+    });
+
+    expect(plan.plannedBeforeFridayMinutes).toBe(28 * 60);
+    expect(plan.targetRequiredMinutes).toBe(4 * 60 + 24);
+    expect(plan.earliestClockOut).toBe(t('16:00'));
+    expect(plan.projectedExcessMinutes).toBe(2 * 60 + 41);
   });
 
 

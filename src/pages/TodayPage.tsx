@@ -79,11 +79,12 @@ export function TodayPage({ rules }: { rules: WorkRules }) {
         plannedDayCount: plan.plannedDayCount,
         plannedBeforeFridayMinutes: plan.plannedBeforeFridayMinutes,
         excessBeforeFridayMinutes: plan.excessBeforeFridayMinutes,
+        projectedExcessMinutes: plan.projectedExcessMinutes,
         core: plan.earliestClockOut == null ? { isValid: false, reason: '퇴근 가능 시간을 계산하지 못했어요.' } : validateCoreTime({ clockIn: plan.mode === 'friday' ? fridayClockIn : clockIn, clockOut: plan.earliestClockOut, coreTime: rules.coreTime }),
         isImpossible: plan.earliestClockOut == null,
       };
     } catch {
-      return { targetLabel: '금요일 예상', earliestClockOut: null, currentTime: 0, recognizedSoFar: 0, realtimeRemaining: 0, targetRequiredMinutes: 0, plannedDayCount: 0, plannedBeforeFridayMinutes: 0, excessBeforeFridayMinutes: 0, core: { isValid: false, reason: '입력값을 확인해주세요.' }, isImpossible: true };
+      return { targetLabel: '금요일 예상', earliestClockOut: null, currentTime: 0, recognizedSoFar: 0, realtimeRemaining: 0, targetRequiredMinutes: 0, plannedDayCount: 0, plannedBeforeFridayMinutes: 0, excessBeforeFridayMinutes: 0, projectedExcessMinutes: 0, core: { isValid: false, reason: '입력값을 확인해주세요.' }, isImpossible: true };
     }
   }, [currentTimeText, form, planningWeekdays, rules, todayWeekday]);
 

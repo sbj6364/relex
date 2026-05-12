@@ -17,6 +17,8 @@ export type FridayClockOutPlan = {
   plannedDayCount: number;
   plannedBeforeFridayMinutes: number;
   excessBeforeFridayMinutes: number;
+  projectedClockOutWorkMinutes: number;
+  projectedExcessMinutes: number;
   earliestClockOut: Minutes | null;
 };
 
@@ -38,7 +40,9 @@ export function calculateFridayClockOut(params: {
       minClockOut: params.rules.coreTime.end,
       maxClockOut: params.rules.workWindow.end,
     });
-    return { mode, targetWeekday: params.todayWeekday, targetRequiredMinutes: params.weeklyRemainingMinutes, plannedDayCount: 0, plannedBeforeFridayMinutes: 0, excessBeforeFridayMinutes: 0, earliestClockOut };
+    const projectedClockOutWorkMinutes = earliestClockOut == null ? 0 : calculateRecognizedWork({ clockIn: params.todayClockIn, clockOut: earliestClockOut, breaks: params.breaks });
+    const projectedExcessMinutes = Math.max(0, projectedClockOutWorkMinutes - params.weeklyRemainingMinutes);
+    return { mode, targetWeekday: params.todayWeekday, targetRequiredMinutes: params.weeklyRemainingMinutes, plannedDayCount: 0, plannedBeforeFridayMinutes: 0, excessBeforeFridayMinutes: 0, projectedClockOutWorkMinutes, projectedExcessMinutes, earliestClockOut };
   }
 
   const uniquePlannedWorkdays = new Map<number, PlannedWorkday>();
@@ -57,5 +61,8 @@ export function calculateFridayClockOut(params: {
     maxClockOut: params.rules.workWindow.end,
   });
 
-  return { mode, targetWeekday: friday, targetRequiredMinutes, plannedDayCount: relevantPlannedWorkdays.length, plannedBeforeFridayMinutes, excessBeforeFridayMinutes, earliestClockOut };
+  const projectedClockOutWorkMinutes = earliestClockOut == null ? 0 : calculateRecognizedWork({ clockIn: params.fridayClockIn, clockOut: earliestClockOut, breaks: params.breaks });
+  const projectedExcessMinutes = Math.max(0, excessBeforeFridayMinutes + projectedClockOutWorkMinutes - targetRequiredMinutes);
+
+  return { mode, targetWeekday: friday, targetRequiredMinutes, plannedDayCount: relevantPlannedWorkdays.length, plannedBeforeFridayMinutes, excessBeforeFridayMinutes, projectedClockOutWorkMinutes, projectedExcessMinutes, earliestClockOut };
 }
