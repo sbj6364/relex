@@ -1,5 +1,14 @@
+export function normalizeDurationInput(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  const digitOnly = normalized.replace(/\D/g, '');
+  if (/^[\d:]+$/.test(normalized) && digitOnly.length >= 3) {
+    return `${digitOnly.slice(0, -2)}:${digitOnly.slice(-2)}`;
+  }
+  return value;
+}
+
 export function parseDuration(value: string): number {
-  const trimmed = value.trim().toLowerCase();
+  const trimmed = normalizeDurationInput(value).trim().toLowerCase();
   const colonMatch = /^(\d+):(\d{1,2})$/.exec(trimmed);
   if (colonMatch) return Number(colonMatch[1]) * 60 + Number(colonMatch[2]);
   const hourMinuteMatch = /(?:(\d+(?:\.\d+)?)\s*h)?\s*(?:(\d+)\s*m)?/.exec(trimmed);
