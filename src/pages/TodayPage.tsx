@@ -11,6 +11,7 @@ import { calculateDefaultClockOut } from '../lib/work/calculateDefaultClockOut';
 import { calculateFridayClockOut } from '../lib/work/calculateFridayClockOut';
 import { defaultWorkRules } from '../lib/work/workRules';
 import { validateCoreTime } from '../lib/work/validateCoreTime';
+import { validateTimeEntry } from '../lib/work/validateTimeEntry';
 import type { WorkRules } from '../types/work';
 
 const storageKey = 'relex:today';
@@ -81,10 +82,19 @@ export function TodayPage({ rules }: { rules: WorkRules }) {
         excessBeforeFridayMinutes: plan.excessBeforeFridayMinutes,
         projectedExcessMinutes: plan.projectedExcessMinutes,
         core: plan.earliestClockOut == null ? { isValid: false, reason: '퇴근 가능 시간을 계산하지 못했어요.' } : validateCoreTime({ clockIn: plan.mode === 'friday' ? fridayClockIn : clockIn, clockOut: plan.earliestClockOut, coreTime: rules.coreTime }),
+        entryWarnings: [
+          { label: '오늘 출근', result: validateTimeEntry({ role: 'clockIn', time: clockIn, rules }) },
+          { label: '오늘 퇴근', result: validateTimeEntry({ role: 'clockOut', time: todayClockOut, rules }) },
+          ...plannedWorkdaysBeforeFriday.slice(1).flatMap((day) => [
+            { label: `${formatTime(day.clockIn)} 출근`, result: validateTimeEntry({ role: 'clockIn', time: day.clockIn, rules }) },
+            { label: `${formatTime(day.clockOut)} 퇴근`, result: validateTimeEntry({ role: 'clockOut', time: day.clockOut, rules }) },
+          ]),
+          { label: '금요일 예상 출근', result: validateTimeEntry({ role: 'clockIn', time: fridayClockIn, rules }) },
+        ].filter((warning) => !warning.result.isValid),
         isImpossible: plan.earliestClockOut == null,
       };
     } catch {
-      return { targetLabel: '금요일 예상', earliestClockOut: null, currentTime: 0, recognizedSoFar: 0, realtimeRemaining: 0, targetRequiredMinutes: 0, plannedDayCount: 0, plannedBeforeFridayMinutes: 0, excessBeforeFridayMinutes: 0, projectedExcessMinutes: 0, core: { isValid: false, reason: '입력값을 확인해주세요.' }, isImpossible: true };
+      return { targetLabel: '금요일 예상', earliestClockOut: null, currentTime: 0, recognizedSoFar: 0, realtimeRemaining: 0, targetRequiredMinutes: 0, plannedDayCount: 0, plannedBeforeFridayMinutes: 0, excessBeforeFridayMinutes: 0, projectedExcessMinutes: 0, entryWarnings: [], core: { isValid: false, reason: '입력값을 확인해주세요.' }, isImpossible: true };
     }
   }, [currentTimeText, form, planningWeekdays, rules, todayWeekday]);
 
