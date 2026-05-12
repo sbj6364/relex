@@ -1,8 +1,12 @@
 import type { Minutes, WorkRules } from '../../types/work';
+import { getRecognizedMinutesWithStop } from './calculateFridayClockOut';
 
 const standardWorkMinutes = 8 * 60;
 
-export function calculateDefaultClockOut(params: { clockIn: Minutes; breakMinutes: number; rules: WorkRules; targetWorkMinutes?: number }): Minutes {
+export function calculateDefaultClockOut(params: { clockIn: Minutes; stopMinutes: number; rules: WorkRules; targetWorkMinutes?: number }): Minutes {
   const targetWorkMinutes = params.targetWorkMinutes ?? standardWorkMinutes;
-  return Math.min(params.rules.workWindow.end, params.clockIn + targetWorkMinutes + Math.max(0, params.breakMinutes));
+  for (let clockOut = params.clockIn; clockOut <= params.rules.workWindow.end; clockOut += 1) {
+    if (getRecognizedMinutesWithStop({ clockIn: params.clockIn, clockOut, stopMinutes: params.stopMinutes }) >= targetWorkMinutes) return clockOut;
+  }
+  return params.rules.workWindow.end;
 }
