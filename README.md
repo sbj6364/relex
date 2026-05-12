@@ -28,6 +28,16 @@ npm test
 npm run build
 ```
 
+## Vercel 배포
+
+Vercel에서 Application/Framework Preset은 `Vite`를 선택합니다. 기본 설정은 아래와 같습니다.
+
+- Build Command: `npm run build`
+- Output Directory: `dist`
+- Install Command: `npm install`
+
+앱 빌드용 TypeScript 설정은 `src/tests`를 제외하고, Vitest 설정은 `vitest.config.ts`로 분리되어 있습니다.
+
 ## 기술 스택
 
 - Vite
