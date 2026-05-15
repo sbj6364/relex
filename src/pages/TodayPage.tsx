@@ -79,7 +79,7 @@ export function TodayPage({ rules }: { rules: WorkRules }) {
       const plannedWorkdaysBeforeFriday = [{ weekday: todayWeekday, clockIn, clockOut: todayClockOut, stopMinutes: todayStopMinutes }, ...Object.entries(form.remainingDayPlans).filter(([weekday]) => planningWeekdays.includes(Number(weekday))).map(([weekday, plan]) => ({ weekday: Number(weekday), clockIn: parseTime(plan.clockIn), clockOut: parseTime(plan.clockOut), stopMinutes: parseStopMinutes(plan.stopMinutes) }))];
       const plan = calculateFridayClockOut({ todayWeekday, weeklyRemainingMinutes: weeklyRemaining, todayClockIn: clockIn, todayStopMinutes, fridayClockIn, fridayStopMinutes, plannedWorkdaysBeforeFriday, rules });
       const effectiveNow = Math.max(clockIn, currentTime);
-      const recognizedSoFar = getRecognizedMinutesWithStop({ clockIn, clockOut: effectiveNow, stopMinutes: todayStopMinutes });
+      const recognizedSoFar = getRecognizedMinutesWithStop({ clockIn, clockOut: effectiveNow, stopMinutes: todayStopMinutes, breaks: [rules.defaultBreak] });
       return {
         targetLabel: getTargetLabel(plan.mode),
         earliestClockOut: plan.earliestClockOut,
